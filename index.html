@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 前沿每日精选</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .date {
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px 0;
+      color: #888;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #333;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error {
+      background: #1a1018;
+      border: 1px solid #ff4444;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      color: #ff6666;
+    }
+
+    .category {
+      margin-bottom: 40px;
+    }
+
+    .category h2 {
+      font-size: 1.1rem;
+      color: #fff;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #222;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .category-icon {
+      font-size: 1.2rem;
+    }
+
+    .video-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .video-item {
+      background: #161616;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 16px;
+      transition: all 0.2s;
+    }
+
+    .video-item:hover {
+      border-color: #444;
+      transform: translateY(-1px);
+    }
+
+    .video-item a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .video-title {
+      font-size: 1rem;
+      font-weight: 500;
+      color: #fff;
+      margin-bottom: 8px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .video-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.8rem;
+      color: #888;
+    }
+
+    .video-channel {
+      color: #667eea;
+    }
+
+    .video-views {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .video-date {
+      margin-left: auto;
+    }
+
+    .refresh-btn {
+      background: #1a1a2e;
+      border: 1px solid #333;
+      color: #888;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .refresh-btn:hover {
+      border-color: #667eea;
+      color: #667eea;
+    }
+
+    .last-updated {
+      text-align: center;
+      color: #555;
+      font-size: 0.75rem;
+      margin-top: 40px;
+    }
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    @media (max-width: 600px) {
+      .video-meta {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .video-date {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-row">
+        <h1>AI 前沿每日精选</h1>
+        <button class="refresh-btn" onclick="fetchAllFeeds()">刷新</button>
+      </div>
+      <p class="date" id="currentDate"></p>
+    </header>
+
+    <div id="app">
+      <div class="loading">
+        <div class="loading-spinner"></div>
+        <p>正在加载最新视频...</p>
+      </div>
+    </div>
+
+    <p class="last-updated" id="lastUpdated"></p>
+  </div>
+
+  <script>
+    const CORS_PROXIES = [
+      'https://api.allorigins.win/raw?url=',
+      'https://corsproxy.io/?',
+      'https://api.codetabs.com/v1/proxy?quest='
+    ];
+    let currentProxyIndex = 0;
+
+    function getProxy() {
+      return CORS_PROXIES[currentProxyIndex];
+    }
+
+    function rotateProxy() {
+      currentProxyIndex = (currentProxyIndex + 1) % CORS_PROXIES.length;
+      return CORS_PROXIES[currentProxyIndex];
+    }
+
+    const channels = [
+      {
+        name: 'OpenAI',
+        icon: '🤖',
+        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCX7O8t90BeS3SjBTF5Gc5Yw'
+      },
+      {
+        name: 'Anthropic',
+        icon: '🧠',
+        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC8butISWg-W-6rj_r8DsD1Q'
+      },
+      {
+        name: 'NVIDIA',
+        icon: '🎮',
+        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCNj_ptVv8K42H7k_qlE3N-Q'
+      },
+      {
+        name: 'Google DeepMind',
+        icon: '🔬',
+        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC4p4L7yq41-SuoqCPuFhS0Q'
+      },
+      {
+        name: 'Lex Fridman',
+        icon: '🎙️',
+        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCGS5OzHc0Ss-5fZoJ1gcXg'
+      },
+      {
+        name: 'Marques Brownlee',
+        icon: '📱',
+        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ'
+      },
+      {
+        name: 'Andrej Karpathy',
+        icon: '🧮',
+        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCXUPKJOwM1Eu7D1nPAfGW5Q'
+      },
+      {
+        name: 'SpaceX',
+        icon: '🚀',
+        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCtI0Hyo5Lf9RFqNJ-5n80QQ'
+      },
+      {
+        name: 'Tesla',
+        icon: '⚡',
+        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC5WjFrtBvsfl7z1DjdKQdDg'
+      },
+      {
+        name: 'AI Explained',
+        icon: '💡',
+        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCV6rq4jde-8OiwtzU8fDUJw'
+      }
+    ];
+
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 60) return `${diffMins} 分钟前`;
+      if (diffHours < 24) return `${diffHours} 小时前`;
+      if (diffDays < 7) return `${diffDays} 天前`;
+      return date.toLocaleDateString('zh-CN');
+    }
+
+    function formatViewCount(viewStr) {
+      if (!viewStr) return '';
+      const num = parseInt(viewStr.replace(/,/g, ''), 10);
+      if (isNaN(num)) return viewStr;
+      if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+      if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+      return num.toString();
+    }
+
+    function parseRSS(xmlText) {
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(xmlText, 'text/xml');
+      const entries = xml.querySelectorAll('entry');
+
+      const videos = [];
+      entries.forEach(entry => {
+        const title = entry.querySelector('title')?.textContent || '';
+        const link = entry.querySelector('link')?.getAttribute('href') || '';
+        const published = entry.querySelector('published')?.textContent || '';
+        const videoId = entry.querySelector('yt\\:videoId')?.textContent || '';
+        const channelTitle = entry.querySelector('author > name')?.textContent || '';
+        const viewCount = entry.querySelector('yt\\:statistics')?.getAttribute('viewCount') || '';
+
+        if (title && link) {
+          videos.push({
+            title,
+            link: link.replace('http://', 'https://'),
+            published,
+            videoId,
+            channelTitle,
+            viewCount: formatViewCount(viewCount)
+          });
+        }
+      });
+
+      return videos;
+    }
+
+    async function fetchWithProxy(channel, maxRetries = 3) {
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const proxy = getProxy();
+          const url = proxy + encodeURIComponent(channel.feedUrl);
+          const response = await fetch(url, { timeout: 15000 });
+          if (!response.ok) throw new Error('Fetch failed');
+          const text = await response.text();
+          return parseRSS(text);
+        } catch (error) {
+          console.warn(`Attempt ${attempt + 1} failed for ${channel.name}:`, error);
+          rotateProxy();
+        }
+      }
+      return [];
+    }
+
+    async function fetchChannelFeed(channel) {
+      const videos = await fetchWithProxy(channel);
+      return videos;
+    }
+
+    async function fetchAllFeeds() {
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="loading">
+          <div class="loading-spinner"></div>
+          <p>正在加载最新视频...</p>
+        </div>
+      `;
+
+      const results = await Promise.all(
+        channels.map(ch => fetchChannelFeed(ch).then(videos => ({ ...ch, videos })))
+      );
+
+      const validResults = results.filter(r => r.videos.length > 0);
+
+      if (validResults.length === 0) {
+        // Fallback: show direct channel links when feeds fail
+        app.innerHTML = `
+          <div class="error" style="margin-bottom: 30px; background: #1a1a2e;">
+            自动加载失败，请检查网络或稍后刷新。<br>
+            以下为各频道的直接入口：
+          </div>
+          <div class="category">
+            <h2><span class="category-icon">🤖</span>AI 官方频道</h2>
+            <div class="video-list">
+              <div class="video-item"><a href="https://www.youtube.com/@OpenAI" target="_blank" rel="noopener"><div class="video-title">OpenAI 官方频道 → 点击访问</div><div class="video-meta"><span class="video-channel">OpenAI</span></div></a></div>
+              <div class="video-item"><a href="https://www.youtube.com/@AnthropicAI" target="_blank" rel="noopener"><div class="video-title">Anthropic AI 官方频道 → 点击访问</div><div class="video-meta"><span class="video-channel">Anthropic</span></div></a></div>
+              <div class="video-item"><a href="https://www.youtube.com/@NVIDIA" target="_blank" rel="noopener"><div class="video-title">NVIDIA 官方频道 → 点击访问</div><div class="video-meta"><span class="video-channel">NVIDIA</span></div></a></div>
+              <div class="video-item"><a href="https://www.youtube.com/@GoogleDeepMind" target="_blank" rel="noopener"><div class="video-title">Google DeepMind 频道 → 点击访问</div><div class="video-meta"><span class="video-channel">Google</span></div></a></div>
+            </div>
+          </div>
+          <div class="category">
+            <h2><span class="category-icon">🎙️</span>知名博主</h2>
+            <div class="video-list">
+              <div class="video-item"><a href="https://www.youtube.com/@lexfridman" target="_blank" rel="noopener"><div class="video-title">Lex Fridman → 点击访问</div><div class="video-meta"><span class="video-channel">Lex Fridman</span></div></a></div>
+              <div class="video-item"><a href="https://www.youtube.com/@mkbhd" target="_blank" rel="noopener"><div class="video-title">Marques Brownlee (MKBHD) → 点击访问</div><div class="video-meta"><span class="video-channel">MKBHD</span></div></a></div>
+              <div class="video-item"><a href="https://www.youtube.com/@AndrejKarpathy" target="_blank" rel="noopener"><div class="video-title">Andrej Karpathy → 点击访问</div><div class="video-meta"><span class="video-channel">Andrej Karpathy</span></div></a></div>
+            </div>
+          </div>
+          <div class="category">
+            <h2><span class="category-icon">🚀</span>Musk 相关</h2>
+            <div class="video-list">
+              <div class="video-item"><a href="https://www.youtube.com/@SpaceX" target="_blank" rel="noopener"><div class="video-title">SpaceX → 点击访问</div><div class="video-meta"><span class="video-channel">SpaceX</span></div></a></div>
+              <div class="video-item"><a href="https://www.youtube.com/@Tesla" target="_blank" rel="noopener"><div class="video-title">Tesla → 点击访问</div><div class="video-meta"><span class="video-channel">Tesla</span></div></a></div>
+              <div class="video-item"><a href="https://www.youtube.com/@AIExplained" target="_blank" rel="noopener"><div class="video-title">AI Explained → 点击访问</div><div class="video-meta"><span class="video-channel">AI Explained</span></div></a></div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      let html = '';
+      validResults.forEach(channel => {
+        html += `
+          <div class="category">
+            <h2><span class="category-icon">${channel.icon}</span>${channel.name}</h2>
+            <div class="video-list">
+        `;
+
+        channel.videos.slice(0, 5).forEach(video => {
+          const watchUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
+          html += `
+            <div class="video-item">
+              <a href="${watchUrl}" target="_blank" rel="noopener">
+                <div class="video-title">${video.title}</div>
+                <div class="video-meta">
+                  <span class="video-channel">${video.channelTitle}</span>
+                  ${video.viewCount ? `<span class="video-views">▶ ${video.viewCount}</span>` : ''}
+                  <span class="video-date">${formatDate(video.published)}</span>
+                </div>
+              </a>
+            </div>
+          `;
+        });
+
+        html += '</div></div>';
+      });
+
+      app.innerHTML = html;
+
+      const now = new Date();
+      document.getElementById('lastUpdated').textContent =
+        `最后更新: ${now.toLocaleString('zh-CN')}`;
+    }
+
+    document.getElementById('currentDate').textContent =
+      new Date().toLocaleDateString('zh-CN', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+    fetchAllFeeds();
+  </script>
+</body>
+</html>
