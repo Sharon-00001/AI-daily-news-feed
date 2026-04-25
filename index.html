@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI 前沿每日精选</title>
+  <title>信息聚合 Dashboard</title>
   <style>
     * {
       margin: 0;
@@ -20,7 +20,7 @@
     }
 
     .container {
-      max-width: 900px;
+      max-width: 1100px;
       margin: 0 auto;
     }
 
@@ -39,9 +39,33 @@
       background-clip: text;
     }
 
-    .date {
+    .subtitle {
       color: #888;
       font-size: 0.9rem;
+    }
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .refresh-btn {
+      background: #1a1a2e;
+      border: 1px solid #333;
+      color: #888;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .refresh-btn:hover {
+      border-color: #667eea;
+      color: #667eea;
     }
 
     .loading {
@@ -78,7 +102,7 @@
     }
 
     .category h2 {
-      font-size: 1.1rem;
+      font-size: 1rem;
       color: #fff;
       margin-bottom: 16px;
       padding-bottom: 8px;
@@ -89,38 +113,46 @@
     }
 
     .category-icon {
-      font-size: 1.2rem;
+      font-size: 1.1rem;
     }
 
-    .video-list {
+    .source-tag {
+      font-size: 0.7rem;
+      color: #666;
+      margin-left: auto;
+      font-weight: normal;
+    }
+
+    .video-list, .article-list {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
 
-    .video-item {
+    .item {
       background: #161616;
       border: 1px solid #222;
-      border-radius: 10px;
-      padding: 16px;
+      border-radius: 8px;
+      padding: 14px 16px;
       transition: all 0.2s;
     }
 
-    .video-item:hover {
+    .item:hover {
       border-color: #444;
       transform: translateY(-1px);
     }
 
-    .video-item a {
+    .item a {
       text-decoration: none;
       color: inherit;
+      display: block;
     }
 
-    .video-title {
-      font-size: 1rem;
+    .item-title {
+      font-size: 0.95rem;
       font-weight: 500;
       color: #fff;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       line-height: 1.4;
       display: -webkit-box;
       -webkit-line-clamp: 2;
@@ -128,42 +160,26 @@
       overflow: hidden;
     }
 
-    .video-meta {
+    .item-meta {
       display: flex;
       align-items: center;
-      gap: 16px;
-      font-size: 0.8rem;
+      gap: 12px;
+      font-size: 0.75rem;
       color: #888;
+      flex-wrap: wrap;
     }
 
-    .video-channel {
+    .item-source {
       color: #667eea;
     }
 
-    .video-views {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .video-date {
+    .item-time {
       margin-left: auto;
     }
 
-    .refresh-btn {
-      background: #1a1a2e;
-      border: 1px solid #333;
-      color: #888;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      transition: all 0.2s;
-    }
-
-    .refresh-btn:hover {
-      border-color: #667eea;
-      color: #667eea;
+    .view-on-source {
+      color: #555;
+      font-size: 0.7rem;
     }
 
     .last-updated {
@@ -173,18 +189,20 @@
       margin-top: 40px;
     }
 
-    .header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .news-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+      gap: 0;
     }
 
     @media (max-width: 600px) {
-      .video-meta {
-        flex-wrap: wrap;
+      .news-grid {
+        grid-template-columns: 1fr;
+      }
+      .item-meta {
         gap: 8px;
       }
-      .video-date {
+      .item-time {
         margin-left: 0;
       }
     }
@@ -194,16 +212,18 @@
   <div class="container">
     <header>
       <div class="header-row">
-        <h1>AI 前沿每日精选</h1>
+        <div>
+          <h1>全球资讯聚合</h1>
+          <p class="subtitle" id="currentDate"></p>
+        </div>
         <button class="refresh-btn" onclick="fetchAllFeeds()">刷新</button>
       </div>
-      <p class="date" id="currentDate"></p>
     </header>
 
     <div id="app">
       <div class="loading">
         <div class="loading-spinner"></div>
-        <p>正在加载最新视频...</p>
+        <p>正在加载最新资讯...</p>
       </div>
     </div>
 
@@ -224,63 +244,48 @@
 
     function rotateProxy() {
       currentProxyIndex = (currentProxyIndex + 1) % CORS_PROXIES.length;
-      return CORS_PROXIES[currentProxyIndex];
     }
 
-    const channels = [
+    const feeds = [
       {
-        name: 'OpenAI',
-        icon: '🤖',
-        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCX7O8t90BeS3SjBTF5Gc5Yw'
+        name: 'BBC World News',
+        icon: '🌍',
+        source: 'BBC',
+        feedUrl: 'https://feeds.bbci.co.uk/news/world/rss.xml',
+        displayLimit: 6
       },
       {
-        name: 'Anthropic',
-        icon: '🧠',
-        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC8butISWg-W-6rj_r8DsD1Q'
+        name: 'Reuters World',
+        icon: '📰',
+        source: 'Reuters',
+        feedUrl: 'https://www.reutersagency.com/feed/',
+        displayLimit: 6
       },
       {
-        name: 'NVIDIA',
-        icon: '🎮',
-        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCNj_ptVv8K42H7k_qlE3N-Q'
+        name: 'Hacker News',
+        icon: '💻',
+        source: 'HN',
+        feedUrl: 'https://hnrss.org/frontpage',
+        displayLimit: 8
       },
       {
-        name: 'Google DeepMind',
-        icon: '🔬',
-        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC4p4L7yq41-SuoqCPuFhS0Q'
-      },
-      {
-        name: 'Lex Fridman',
-        icon: '🎙️',
-        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCGS5OzHc0Ss-5fZoJ1gcXg'
-      },
-      {
-        name: 'Marques Brownlee',
-        icon: '📱',
-        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ'
-      },
-      {
-        name: 'Andrej Karpathy',
-        icon: '🧮',
-        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCXUPKJOwM1Eu7D1nPAfGW5Q'
-      },
-      {
-        name: 'SpaceX',
+        name: 'TechCrunch',
         icon: '🚀',
-        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCtI0Hyo5Lf9RFqNJ-5n80QQ'
+        source: 'TC',
+        feedUrl: 'https://techcrunch.com/feed/',
+        displayLimit: 6
       },
       {
-        name: 'Tesla',
-        icon: '⚡',
-        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC5WjFrtBvsfl7z1DjdKQdDg'
-      },
-      {
-        name: 'AI Explained',
-        icon: '💡',
-        feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCV6rq4jde-8OiwtzU8fDUJw'
+        name: 'Reddit ML',
+        icon: '🤖',
+        source: 'Reddit',
+        feedUrl: 'https://www.reddit.com/r/MachineLearning.rss',
+        displayLimit: 6
       }
     ];
 
     function formatDate(dateStr) {
+      if (!dateStr) return '';
       const date = new Date(dateStr);
       const now = new Date();
       const diffMs = now - date;
@@ -288,70 +293,83 @@
       const diffHours = Math.floor(diffMs / 3600000);
       const diffDays = Math.floor(diffMs / 86400000);
 
+      if (isNaN(date.getTime())) return dateStr;
       if (diffMins < 60) return `${diffMins} 分钟前`;
       if (diffHours < 24) return `${diffHours} 小时前`;
       if (diffDays < 7) return `${diffDays} 天前`;
-      return date.toLocaleDateString('zh-CN');
+      return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
     }
 
-    function formatViewCount(viewStr) {
-      if (!viewStr) return '';
-      const num = parseInt(viewStr.replace(/,/g, ''), 10);
-      if (isNaN(num)) return viewStr;
-      if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-      if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-      return num.toString();
-    }
-
-    function parseRSS(xmlText) {
+    function parseRSS(xmlText, source) {
       const parser = new DOMParser();
       const xml = parser.parseFromString(xmlText, 'text/xml');
       const entries = xml.querySelectorAll('entry');
 
-      const videos = [];
+      const items = [];
       entries.forEach(entry => {
-        const title = entry.querySelector('title')?.textContent || '';
-        const link = entry.querySelector('link')?.getAttribute('href') || '';
-        const published = entry.querySelector('published')?.textContent || '';
-        const videoId = entry.querySelector('yt\\:videoId')?.textContent || '';
-        const channelTitle = entry.querySelector('author > name')?.textContent || '';
-        const viewCount = entry.querySelector('yt\\:statistics')?.getAttribute('viewCount') || '';
+        let title = '';
+        let link = '';
+        let published = '';
+        let content = '';
+
+        const titleEl = entry.querySelector('title') || entry.querySelector('h2');
+        if (titleEl) title = titleEl.textContent || '';
+
+        const linkEl = entry.querySelector('link');
+        if (linkEl) link = linkEl.getAttribute('href') || '';
+
+        const publishedEl = entry.querySelector('published') || entry.querySelector('updated');
+        if (publishedEl) published = publishedEl.textContent || '';
+
+        const contentEl = entry.querySelector('content');
+        if (contentEl) content = contentEl.textContent || '';
 
         if (title && link) {
-          videos.push({
-            title,
-            link: link.replace('http://', 'https://'),
+          items.push({
+            title: title.replace(/<[^>]*>/g, '').trim(),
+            link: link.startsWith('http') ? link : '',
             published,
-            videoId,
-            channelTitle,
-            viewCount: formatViewCount(viewCount)
+            source: source
           });
         }
       });
 
-      return videos;
+      // Fallback for RSS that uses item elements
+      if (items.length === 0) {
+        const items2 = xml.querySelectorAll('item');
+        items2.forEach(item => {
+          const title = item.querySelector('title')?.textContent || '';
+          const link = item.querySelector('link')?.textContent || '';
+          const pubDate = item.querySelector('pubDate')?.textContent || '';
+          if (title) {
+            items.push({
+              title: title.replace(/<[^>]*>/g, '').trim(),
+              link: link.startsWith('http') ? link : '',
+              published: pubDate,
+              source: source
+            });
+          }
+        });
+      }
+
+      return items;
     }
 
-    async function fetchWithProxy(channel, maxRetries = 3) {
+    async function fetchWithProxy(feed, maxRetries = 2) {
       for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
           const proxy = getProxy();
-          const url = proxy + encodeURIComponent(channel.feedUrl);
+          const url = proxy + encodeURIComponent(feed.feedUrl);
           const response = await fetch(url, { timeout: 15000 });
           if (!response.ok) throw new Error('Fetch failed');
           const text = await response.text();
-          return parseRSS(text);
+          return parseRSS(text, feed.source);
         } catch (error) {
-          console.warn(`Attempt ${attempt + 1} failed for ${channel.name}:`, error);
+          console.warn(`Failed ${feed.name}:`, error);
           rotateProxy();
         }
       }
       return [];
-    }
-
-    async function fetchChannelFeed(channel) {
-      const videos = await fetchWithProxy(channel);
-      return videos;
     }
 
     async function fetchAllFeeds() {
@@ -359,70 +377,50 @@
       app.innerHTML = `
         <div class="loading">
           <div class="loading-spinner"></div>
-          <p>正在加载最新视频...</p>
+          <p>正在加载最新资讯...</p>
         </div>
       `;
 
       const results = await Promise.all(
-        channels.map(ch => fetchChannelFeed(ch).then(videos => ({ ...ch, videos })))
+        feeds.map(feed =>
+          fetchWithProxy(feed).then(items => ({ ...feed, items }))
+        )
       );
 
-      const validResults = results.filter(r => r.videos.length > 0);
+      const validResults = results.filter(r => r.items.length > 0);
 
       if (validResults.length === 0) {
-        // Fallback: show direct channel links when feeds fail
         app.innerHTML = `
-          <div class="error" style="margin-bottom: 30px; background: #1a1a2e;">
-            自动加载失败，请检查网络或稍后刷新。<br>
-            以下为各频道的直接入口：
-          </div>
-          <div class="category">
-            <h2><span class="category-icon">🤖</span>AI 官方频道</h2>
-            <div class="video-list">
-              <div class="video-item"><a href="https://www.youtube.com/@OpenAI" target="_blank" rel="noopener"><div class="video-title">OpenAI 官方频道 → 点击访问</div><div class="video-meta"><span class="video-channel">OpenAI</span></div></a></div>
-              <div class="video-item"><a href="https://www.youtube.com/@AnthropicAI" target="_blank" rel="noopener"><div class="video-title">Anthropic AI 官方频道 → 点击访问</div><div class="video-meta"><span class="video-channel">Anthropic</span></div></a></div>
-              <div class="video-item"><a href="https://www.youtube.com/@NVIDIA" target="_blank" rel="noopener"><div class="video-title">NVIDIA 官方频道 → 点击访问</div><div class="video-meta"><span class="video-channel">NVIDIA</span></div></a></div>
-              <div class="video-item"><a href="https://www.youtube.com/@GoogleDeepMind" target="_blank" rel="noopener"><div class="video-title">Google DeepMind 频道 → 点击访问</div><div class="video-meta"><span class="video-channel">Google</span></div></a></div>
-            </div>
-          </div>
-          <div class="category">
-            <h2><span class="category-icon">🎙️</span>知名博主</h2>
-            <div class="video-list">
-              <div class="video-item"><a href="https://www.youtube.com/@lexfridman" target="_blank" rel="noopener"><div class="video-title">Lex Fridman → 点击访问</div><div class="video-meta"><span class="video-channel">Lex Fridman</span></div></a></div>
-              <div class="video-item"><a href="https://www.youtube.com/@mkbhd" target="_blank" rel="noopener"><div class="video-title">Marques Brownlee (MKBHD) → 点击访问</div><div class="video-meta"><span class="video-channel">MKBHD</span></div></a></div>
-              <div class="video-item"><a href="https://www.youtube.com/@AndrejKarpathy" target="_blank" rel="noopener"><div class="video-title">Andrej Karpathy → 点击访问</div><div class="video-meta"><span class="video-channel">Andrej Karpathy</span></div></a></div>
-            </div>
-          </div>
-          <div class="category">
-            <h2><span class="category-icon">🚀</span>Musk 相关</h2>
-            <div class="video-list">
-              <div class="video-item"><a href="https://www.youtube.com/@SpaceX" target="_blank" rel="noopener"><div class="video-title">SpaceX → 点击访问</div><div class="video-meta"><span class="video-channel">SpaceX</span></div></a></div>
-              <div class="video-item"><a href="https://www.youtube.com/@Tesla" target="_blank" rel="noopener"><div class="video-title">Tesla → 点击访问</div><div class="video-meta"><span class="video-channel">Tesla</span></div></a></div>
-              <div class="video-item"><a href="https://www.youtube.com/@AIExplained" target="_blank" rel="noopener"><div class="video-title">AI Explained → 点击访问</div><div class="video-meta"><span class="video-channel">AI Explained</span></div></a></div>
-            </div>
+          <div class="error">
+            加载失败，可能是网络问题。<br>
+            请检查网络后点击右上角「刷新」重试。
           </div>
         `;
         return;
       }
 
-      let html = '';
-      validResults.forEach(channel => {
+      let html = '<div class="news-grid">';
+
+      validResults.forEach(feed => {
         html += `
           <div class="category">
-            <h2><span class="category-icon">${channel.icon}</span>${channel.name}</h2>
-            <div class="video-list">
+            <h2>
+              <span class="category-icon">${feed.icon}</span>
+              ${feed.name}
+              <span class="source-tag">${feed.source}</span>
+            </h2>
+            <div class="article-list">
         `;
 
-        channel.videos.slice(0, 5).forEach(video => {
-          const watchUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
+        feed.items.slice(0, feed.displayLimit).forEach(item => {
+          const displayLink = item.link || feed.feedUrl;
           html += `
-            <div class="video-item">
-              <a href="${watchUrl}" target="_blank" rel="noopener">
-                <div class="video-title">${video.title}</div>
-                <div class="video-meta">
-                  <span class="video-channel">${video.channelTitle}</span>
-                  ${video.viewCount ? `<span class="video-views">▶ ${video.viewCount}</span>` : ''}
-                  <span class="video-date">${formatDate(video.published)}</span>
+            <div class="item">
+              <a href="${displayLink}" target="_blank" rel="noopener">
+                <div class="item-title">${item.title}</div>
+                <div class="item-meta">
+                  <span class="item-time">${formatDate(item.published)}</span>
+                  <span class="view-on-source">→ 查看原文</span>
                 </div>
               </a>
             </div>
@@ -432,6 +430,7 @@
         html += '</div></div>';
       });
 
+      html += '</div>';
       app.innerHTML = html;
 
       const now = new Date();
